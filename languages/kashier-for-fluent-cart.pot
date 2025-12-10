@@ -1,0 +1,112 @@
+# Copyright (C) 2025 Your Name or Company
+# This file is distributed under the GPLv3.
+msgid ""
+msgstr ""
+"Project-Id-Version: Kashier for FluentCart 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/kashier-for-fluent-cart\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-11-09T02:15:00+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.11.0\n"
+"X-Domain: kashier-for-fluent-cart\n"
+
+#. Plugin Name
+#: kashier-for-fluent-cart.php
+msgid "Kashier for FluentCart"
+msgstr ""
+
+#. Plugin URI
+#: kashier-for-fluent-cart.php
+msgid "https://yourwebsite.com/kashier-for-fluentcart"
+msgstr ""
+
+#. Description
+#: kashier-for-fluent-cart.php
+msgid "Secure FluentCart payments via Kashier gateway."
+msgstr ""
+
+#. Author
+#: kashier-for-fluent-cart.php
+msgid "Your Name or Company"
+msgstr ""
+
+#. Author URI
+#: kashier-for-fluent-cart.php
+msgid "https://yourwebsite.com"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier.php:55
+msgid "Kashier Payment"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier.php:56
+msgid "Secure payment via Kashier gateway."
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier.php:91
+msgid "Kashier gateway is not properly configured."
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier.php:101
+msgid "Order placed successfully."
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier.php:117
+msgid "Kashier API error: "
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier.php:123
+msgid "Unexpected Kashier response."
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier.php:130
+msgid "Thank you for your order. You will be redirected to Kashier to complete payment."
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier.php:140
+msgid "Invalid IPN data"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier.php:150
+msgid "Transaction not found or already processed"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier.php:160
+msgid "Payment confirmed"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier-settings-base.php:85
+msgid "API Key"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier-settings-base.php:86
+msgid "Your Kashier API Key"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier-settings-base.php:90
+msgid "Merchant ID"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier-settings-base.php:91
+msgid "Your Kashier Merchant ID"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier-settings-base.php:95
+msgid "Payment Mode"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier-settings-base.php:96
+msgid "Choose between test or live mode"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier-settings-base.php:100
+msgid "Debug Mode"
+msgstr ""
+
+#: includes/payment-gateways/kashier/class-kashier-settings-base.php:101
+msgid "Log additional information for debugging purposes."
+msgstr ""
