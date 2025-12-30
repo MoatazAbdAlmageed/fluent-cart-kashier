@@ -7,41 +7,45 @@ use FluentCart\App\Models\OrderTransaction;
 use FluentCart\App\Models\Order;
 use FluentCart\App\Helpers\StatusHelper;
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+if (! defined('ABSPATH')) {
+    exit;
 }
 
 /**
  * Kashier Payment Gateway Class
  */
-class Kashier_Payment extends AbstractPaymentGateway{
+class Kashier_Payment extends AbstractPaymentGateway
+{
 
-    public function __construct() {
+    public function __construct()
+    {
         $settings = new Kashier_Settings();
         // Debugging the fatal error where string is passed instead of object
         if (!is_object($settings)) {
             error_log('Kashier Fatal Error Debug: Kashier_Settings instantiation failed or returned non-object. Type: ' . gettype($settings));
         }
-        parent::__construct( $settings );
+        parent::__construct($settings);
         $this->supportedFeatures = ['payment', 'webhook'];
-        
+
         add_action('fluent_cart/receipt/thank_you/before_order_items', [$this, 'thank_you_content'], 10);
         add_action('fluent_cart/thankyou_content', [$this, 'thank_you_content'], 10);
-        
+
         // Shortcode for manual placement
         add_shortcode('kashier_payment_details', [$this, 'thank_you_content_shortcode']);
-        
+
         // Debugging: Log to console on footer
         add_action('wp_footer', [$this, 'footer_debug']);
     }
 
-    public function footer_debug() {
+    public function footer_debug()
+    {
         if (isset($_GET['fluent_cart_order_received'])) {
             echo '<script>console.log("Kashier: Order Received Page Loaded");</script>';
         }
     }
 
-    public function thank_you_content_shortcode($atts) {
+    public function thank_you_content_shortcode($atts)
+    {
         ob_start();
         $order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
         if ($order_id) {
@@ -57,9 +61,10 @@ class Kashier_Payment extends AbstractPaymentGateway{
      * Thank You Page Content
      * @param array|object $args
      */
-    public function thank_you_content($args) {
+    public function thank_you_content($args)
+    {
         error_log('Kashier: thank_you_content hook fired.');
-        
+
         if (is_object($args)) {
             $order = $args;
         } elseif (is_array($args) && isset($args['order'])) {
@@ -72,25 +77,25 @@ class Kashier_Payment extends AbstractPaymentGateway{
         if ($order->payment_method != 'kashier') {
             return;
         }
-        
+
         $transaction = OrderTransaction::where('order_id', $order->id)
-                                        ->where('payment_method', 'kashier')
-                                        ->orderBy('id', 'DESC')
-                                        ->first();
-                                        
+            ->where('payment_method', 'kashier')
+            ->orderBy('id', 'DESC')
+            ->first();
+
         if (!$transaction) {
             error_log('Kashier: thank_you_content - No transaction found.');
             return;
         }
-        
-        ?>
+
+?>
         <div class="kashier-thank-you-details" style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #eee; border-radius: 5px;">
             <h3><?php _e('Payment Details', 'fluent-cart-kashier'); ?></h3>
             <p><strong><?php _e('Payment Method:', 'fluent-cart-kashier'); ?></strong> Kashier</p>
             <p><strong><?php _e('Transaction ID:', 'fluent-cart-kashier'); ?></strong> <?php echo esc_html($transaction->vendor_charge_id); ?></p>
             <p><strong><?php _e('Amount:', 'fluent-cart-kashier'); ?></strong> <?php echo esc_html($order->currency . ' ' . $transaction->total); ?></p>
         </div>
-        <?php
+<?php
     }
 
     /**
@@ -132,26 +137,26 @@ class Kashier_Payment extends AbstractPaymentGateway{
     {
         $settings = $this->getSettings();
         $mode = $settings->get('payment_mode', 'test');
-        
+
         $merchant_id = $settings->get('merchant_id');
         $payment_api_key = $settings->get('iframe_api_key');
-        
+
         $order = $paymentInstance->order;
-        
-        $amount = $order->total_amount;
+
+        $amount = $order->total_amount / 100;
         $currency = $order->currency;
         $order_id = $order->id;
-        
+
         // Ensure amount is formatted correctly
         if (empty($amount)) {
-             error_log('Kashier Error: Order total is empty.');
+            error_log('Kashier Error: Order total is empty.');
         }
 
         $mid = $merchant_id;
         $oid = $order_id . '_' . time();
         $amt = $amount;
         $cur = $currency;
-        
+
         $hash = $this->generate_kashier_hash($mid, $oid, $amt, $cur, $mode, $payment_api_key);
 
         // Create Pending Transaction
@@ -169,7 +174,7 @@ class Kashier_Payment extends AbstractPaymentGateway{
         ]);
 
         $baseUrl = ($mode === 'live') ? 'https://api.kashier.io/v3/payment/sessions' : 'https://test-api.kashier.io/v3/payment/sessions';
-        
+
         $payload = [
             'merchantId' => $mid,
             'merchantOrderId' => $oid,
@@ -187,28 +192,31 @@ class Kashier_Payment extends AbstractPaymentGateway{
                 'reference' => (string)$hash,
             ],
             'maxFailureAttempts' => 3,
-			'paymentType'     => 'credit',
-			'type'            => 'one-time',
-			'allowedMethods'  => 'card,wallet',
-			'display'         => 'en',
+            'paymentType'     => 'credit',
+            'type'            => 'one-time',
+            'allowedMethods'  => 'card,wallet',
+            'display'         => 'en',
         ];
 
         // Use the Secret API Key for Basic Auth
         $secretKey = trim($settings->get('api_key'));
+        $auth = trim($settings->get('iframe_api_key'));
         $mid = trim($mid);
-        $auth = base64_encode($mid . ':' . $secretKey);
+        // $auth = base64_encode($mid . ':' . $secretKey);
 
         // DEBUG: Log Request
         error_log('Kashier Request URL: ' . $baseUrl);
-        error_log('Kashier Auth Header: Basic ' . substr($auth, 0, 10) . '...');
+        error_log('secretKey ' . $secretKey);
+        error_log('auth ' . $auth);
         error_log('Kashier Payload: ' . print_r($payload, true));
+        error_log('Kashier order: ' . print_r($order, true));
+        error_log('Kashier amount: ' . print_r($amount, true));
 
         $response = wp_remote_post($baseUrl, [
             'headers' => [
-              	'Authorization' => '4a2e8338e2821fe7220f803f544ec55c$31aa8b003a6a7210deb9df6d46e06f281845a89c6e5d4551274e4191a10547650771ffcacc1e0ccd7fed4df6b7422f34', // testing
-				// 'api-key'       => $this->settings->get('api_key'),
-				'api-key'       => 'd9eb2acb-69b3-45df-8d80-8b08f2df83b0',
-				'Content-Type'  => 'application/json',
+                'Authorization' => $secretKey,
+                'api-key'       => $auth,
+                'Content-Type'  => 'application/json',
             ],
             'body'    => json_encode($payload),
             'timeout' => 45,
@@ -222,9 +230,9 @@ class Kashier_Payment extends AbstractPaymentGateway{
         $data = json_decode($body, true);
 
         if (empty($data['sessionUrl'])) {
-             // Log error for debugging
-             error_log('Kashier API Error: ' . print_r($data, true));
-             throw new \Exception(__('Payment session creation failed.', 'fluent-cart-kashier'));
+            // Log error for debugging
+            error_log('Kashier API Error: ' . print_r($data, true));
+            throw new \Exception(__('Payment session creation failed.', 'fluent-cart-kashier'));
         }
 
         return [
@@ -250,15 +258,16 @@ class Kashier_Payment extends AbstractPaymentGateway{
         // Handle Webhook (IPN)
         $data = $_GET;
         array_walk($data, 'sanitize_text_field');
-        
-        if ( empty( $data['signature'] ) || empty( $data['merchantOrderId'] ) ) {
+
+        if (empty($data['signature']) || empty($data['merchantOrderId'])) {
             return;
         }
-        
+
         $this->processIPN($data);
     }
 
-    private function handleReturn() {
+    private function handleReturn()
+    {
         error_log('Kashier: handleReturn started.');
         $data = $_GET;
         $order_id = intval($data['order_id']);
@@ -268,40 +277,40 @@ class Kashier_Payment extends AbstractPaymentGateway{
             error_log('Kashier Error: Order not found in handleReturn. ID: ' . $order_id);
             return;
         }
-        
+
         error_log('Kashier: Order found. ID: ' . $order->id);
 
         if (isset($data['paymentStatus']) && $data['paymentStatus'] === 'SUCCESS') {
-             error_log('Kashier: Payment Status is SUCCESS.');
-             // Find Transaction
-             $transaction = OrderTransaction::where('order_id', $order->id)
-                                            ->where('payment_method', 'kashier')
-                                            ->orderBy('id', 'DESC')
-                                            ->first();
+            error_log('Kashier: Payment Status is SUCCESS.');
+            // Find Transaction
+            $transaction = OrderTransaction::where('order_id', $order->id)
+                ->where('payment_method', 'kashier')
+                ->orderBy('id', 'DESC')
+                ->first();
 
-             if ($transaction) {
-                 error_log('Kashier: Transaction found. ID: ' . $transaction->id);
-                 $transaction->status = 'succeeded';
-                 // $transaction->charge_id = $data['transactionId'] ?? ''; // Column does not exist
-                 $transaction->save();
-                 error_log('Kashier: Transaction updated to succeeded. Transaction ID: ' . ($data['transactionId'] ?? 'N/A'));
-                 
-             try {
-                 // Sync Order Status
-                 (new StatusHelper($order))->syncOrderStatuses($transaction);
-                 error_log('Kashier: Order status synced via StatusHelper.');
-             } catch (\Exception $e) {
-                 error_log('Kashier Warning: StatusHelper failed: ' . $e->getMessage());
-             }
-             } else {
-                 error_log('Kashier: Transaction NOT found. Creating new transaction.');
-                 // Fallback if transaction not found - Create one
-                 $transaction = OrderTransaction::create([
+            if ($transaction) {
+                error_log('Kashier: Transaction found. ID: ' . $transaction->id);
+                $transaction->status = 'succeeded';
+                // $transaction->charge_id = $data['transactionId'] ?? ''; // Column does not exist
+                $transaction->save();
+                error_log('Kashier: Transaction updated to succeeded. Transaction ID: ' . ($data['transactionId'] ?? 'N/A'));
+
+                try {
+                    // Sync Order Status
+                    (new StatusHelper($order))->syncOrderStatuses($transaction);
+                    error_log('Kashier: Order status synced via StatusHelper.');
+                } catch (\Exception $e) {
+                    error_log('Kashier Warning: StatusHelper failed: ' . $e->getMessage());
+                }
+            } else {
+                error_log('Kashier: Transaction NOT found. Creating new transaction.');
+                // Fallback if transaction not found - Create one
+                $transaction = OrderTransaction::create([
                     'order_id'         => $order->id,
                     'payment_method'   => 'kashier',
                     'vendor_charge_id' => $data['merchantOrderId'] ?? '',
-                    'amount'           => $data['amount'] ?? $order->total_amount,
-                    'total'            => $data['amount'] ?? $order->total_amount,
+                    'amount'           => $data['amount'] / 100 ?? $order->total_amount,
+                    'total'            => $data['amount'] / 100 ?? $order->total_amount,
                     'status'           => 'succeeded',
                     'payment_mode'     => $data['mode'] ?? 'test',
                     'created_at'       => current_time('mysql'),
@@ -309,61 +318,62 @@ class Kashier_Payment extends AbstractPaymentGateway{
                 ]);
                 error_log('Kashier: New transaction created. ID: ' . $transaction->id);
 
-                 $order->status = 'completed';
-                 $order->payment_status = 'paid';
-                 $order->payment_method = 'kashier';
-                 $order->save();
-                 error_log('Kashier: Order manually updated to completed/paid.');
-             }
+                $order->status = 'completed';
+                $order->payment_status = 'paid';
+                $order->payment_method = 'kashier';
+                $order->save();
+                error_log('Kashier: Order manually updated to completed/paid.');
+            }
 
-             try {
-                 do_action('fluent_cart_payment_completed', 'kashier', $order, $transaction);
-                 error_log('Kashier: fluent_cart_payment_completed action fired.');
-             } catch (\Exception $e) {
-                 error_log('Kashier Warning: fluent_cart_payment_completed action failed: ' . $e->getMessage());
-             }
+            try {
+                do_action('fluent_cart_payment_completed', 'kashier', $order, $transaction);
+                error_log('Kashier: fluent_cart_payment_completed action fired.');
+            } catch (\Exception $e) {
+                error_log('Kashier Warning: fluent_cart_payment_completed action failed: ' . $e->getMessage());
+            }
 
-             // Redirect to Order Received Page
-             // Redirect to Order Received Page
-             $returnUrl = '';
-             try {
-                 if (method_exists($order, 'getThankyouPageUrl')) {
-                     $returnUrl = $order->getThankyouPageUrl();
-                 }
-             } catch (\Exception $e) {
-                 error_log('Kashier Warning: Could not get thank you page URL: ' . $e->getMessage());
-             }
-             
-             if (empty($returnUrl)) {
-                 // Redirect to Purchase History
-                 $returnUrl = site_url('/account/purchase-history/');
-                 error_log('Kashier: Redirecting to Purchase History: ' . $returnUrl);
-             }
+            // Redirect to Order Received Page
+            // Redirect to Order Received Page
+            $returnUrl = '';
+            try {
+                if (method_exists($order, 'getThankyouPageUrl')) {
+                    $returnUrl = $order->getThankyouPageUrl();
+                }
+            } catch (\Exception $e) {
+                error_log('Kashier Warning: Could not get thank you page URL: ' . $e->getMessage());
+            }
 
-             error_log('Kashier: Redirecting to ' . $returnUrl);
-             
-             if (!headers_sent()) {
-                 wp_redirect($returnUrl);
-             } else {
-                 echo "<script>window.location.href = '" . $returnUrl . "';</script>";
-                 echo "Redirecting to " . $returnUrl . "...";
-             }
-             exit;
+            if (empty($returnUrl)) {
+                // Redirect to Purchase History
+                $returnUrl = site_url('/account/purchase-history/');
+                error_log('Kashier: Redirecting to Purchase History: ' . $returnUrl);
+            }
+
+            error_log('Kashier: Redirecting to ' . $returnUrl);
+
+            if (!headers_sent()) {
+                wp_redirect($returnUrl);
+            } else {
+                echo "<script>window.location.href = '" . $returnUrl . "';</script>";
+                echo "Redirecting to " . $returnUrl . "...";
+            }
+            exit;
         } else {
-             error_log('Kashier: Payment Status is NOT SUCCESS. Status: ' . ($data['paymentStatus'] ?? 'Unknown'));
-             // Redirect to Checkout with error
-             $checkoutUrl = fluent_cart_get_checkout_url();
-             wp_redirect(add_query_arg(['payment_error' => 'failed'], $checkoutUrl));
-             exit;
+            error_log('Kashier: Payment Status is NOT SUCCESS. Status: ' . ($data['paymentStatus'] ?? 'Unknown'));
+            // Redirect to Checkout with error
+            $checkoutUrl = fluent_cart_get_checkout_url();
+            wp_redirect(add_query_arg(['payment_error' => 'failed'], $checkoutUrl));
+            exit;
         }
     }
 
-    private function processIPN($data) {
+    private function processIPN($data)
+    {
         $settings = $this->getSettings();
         $secret = $settings->get('iframe_api_key');
-        
+
         // Validate Signature
-        if ( ! $this->validate_signature( $data, $secret ) ) {
+        if (! $this->validate_signature($data, $secret)) {
             error_log('Kashier IPN Error: Invalid Signature');
             exit('Invalid Signature');
         }
@@ -387,20 +397,20 @@ class Kashier_Payment extends AbstractPaymentGateway{
 
         $order = $transaction->order;
         if (!$order) {
-             error_log('Kashier IPN Error: Order not found for transaction ' . $transaction->id);
-             exit('Order not found');
+            error_log('Kashier IPN Error: Order not found for transaction ' . $transaction->id);
+            exit('Order not found');
         }
 
-        if ( $data['paymentStatus'] === 'SUCCESS' ) {
-             $transaction->status = 'succeeded';
-             // $transaction->charge_id = $data['transactionId'] ?? '';
-             $transaction->save();
-             
-             // $order->transaction_id = $data['transactionId'] ?? '';
-             // $order->save();
-             
-             (new StatusHelper($order))->syncOrderStatuses($transaction);
-            
+        if ($data['paymentStatus'] === 'SUCCESS') {
+            $transaction->status = 'succeeded';
+            // $transaction->charge_id = $data['transactionId'] ?? '';
+            $transaction->save();
+
+            // $order->transaction_id = $data['transactionId'] ?? '';
+            // $order->save();
+
+            (new StatusHelper($order))->syncOrderStatuses($transaction);
+
             do_action('fluent_cart_payment_completed', 'kashier', $order, $transaction);
             exit('Success');
         } else {
@@ -420,7 +430,7 @@ class Kashier_Payment extends AbstractPaymentGateway{
     {
         return [
             'transaction_id' => $data['transactionId'] ?? '',
-            'amount'         => $data['amount'] ?? 0,
+            'amount'         => $data['amount'] / 100 ?? 0,
             'currency'       => $data['currency'] ?? 'EGP',
             'status'         => $data['paymentStatus'] ?? 'pending',
         ];
@@ -437,7 +447,8 @@ class Kashier_Payment extends AbstractPaymentGateway{
      * @param string $secret Payment API Key
      * @return string
      */
-    private function generate_kashier_hash($mid, $oid, $amt, $cur, $mode, $secret) {
+    private function generate_kashier_hash($mid, $oid, $amt, $cur, $mode, $secret)
+    {
         $path = "/?merchantId={$mid}&orderId={$oid}&amount={$amt}&currency={$cur}&mode={$mode}";
         return hash_hmac('sha256', $path, $secret);
     }
@@ -449,16 +460,17 @@ class Kashier_Payment extends AbstractPaymentGateway{
      * @param string $secret
      * @return bool
      */
-    private function validate_signature( $query, $secret ) {
+    private function validate_signature($query, $secret)
+    {
         $queryString = "";
-        foreach ( $query as $key => $value ) {
-            if ( $key === "signature" || $key === "mode" ) {
+        foreach ($query as $key => $value) {
+            if ($key === "signature" || $key === "mode") {
                 continue;
             }
             $queryString .= "&" . $key . "=" . $value;
         }
-        $queryString = ltrim( $queryString, '&' );
-        $signature = hash_hmac( 'sha256', $queryString, $secret, false );
-        return hash_equals( $signature, $query['signature'] );
+        $queryString = ltrim($queryString, '&');
+        $signature = hash_hmac('sha256', $queryString, $secret, false);
+        return hash_equals($signature, $query['signature']);
     }
 }
